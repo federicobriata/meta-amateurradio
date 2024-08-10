@@ -4,7 +4,7 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://olsr-viz.js;md5=c06cbfbe15e3103fde8de57fe1828d02"
 
 DEPENDS = "olsrd"
-RDEPENDS_${PN} = "lighttpd lighttpd-module-cgi"
+RDEPENDS:${PN} = "lighttpd lighttpd-module-cgi lighttpd-module-access lighttpd-module-accesslog"
 
 SRC_URI = "file://index.html \
 	file://olsr-viz.js \
@@ -33,4 +33,4 @@ do_install() {
 		install -m 0644 *.gif ${D}/www/pages/resources/olsr-viz
 }
 
-FILES_${PN} = "/www/*"
+FILES:${PN} = "/www/*"
