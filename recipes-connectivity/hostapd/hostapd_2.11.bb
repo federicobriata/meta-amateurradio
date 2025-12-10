@@ -14,6 +14,9 @@ SRC_URI = " \
     file://hostapd.service \
     file://CVE-2025-24912-01.patch \
     file://CVE-2025-24912-02.patch \
+    file://88463683e73cee8fab8a36c7f4832dbb455ddb7c.diff \
+    file://711-wds_bridge_force.patch \
+    file://6bb15f81e6857989c0b722fc1a49275492114148.diff \
 "
 
 

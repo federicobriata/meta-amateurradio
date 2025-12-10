@@ -168,6 +168,9 @@ CONFIG_ACS=y
 # available to the AP and the devices that may associate with it.
 CONFIG_MBO=y
 
+# APuP Access Point Micro Peering
+CONFIG_APUP=y
+
 # Opportunistic Wireless Encryption (OWE)
 CONFIG_OWE=y
 
