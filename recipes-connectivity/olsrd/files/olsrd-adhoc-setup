@@ -14,7 +14,6 @@ Create the Ad-hoc network"
 iw dev ${ADHOC_INTERFACE} set type ibss;
 iw dev ${ADHOC_INTERFACE} ibss join mesh 2437;
 echo "Done!
-echo "Done!
 get MAC to generate hopefully unique IP address with, by using the last two
 hex pairs as the last two hex pairs for the IP address, converting the hex
 to decimal first."
