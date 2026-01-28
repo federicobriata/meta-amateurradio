@@ -15,10 +15,10 @@ SRC_URI = " \
     file://CVE-2025-24912-01.patch \
     file://CVE-2025-24912-02.patch \
     file://88463683e73cee8fab8a36c7f4832dbb455ddb7c.diff \
-    file://711-wds_bridge_force.patch \
-    file://6bb15f81e6857989c0b722fc1a49275492114148.diff \
+    file://6bb15f81e6857989c0b722fc1a49275492114148-wds-bridge-hostapd.diff \
 "
 
+SRC_URI += "${@bb.utils.contains('BBFILE_COLLECTIONS', 'meta-openwrt', 'file://800-wds_bridge_force.patch', '', d)}"
 
 SRC_URI[sha256sum] = "2b3facb632fd4f65e32f4bf82a76b4b72c501f995a4f62e330219fe7aed1747a"
 
