@@ -78,7 +78,7 @@ diff --git a/src/ap/ap_drv_ops.c b/src/ap/ap_drv_ops.c
 index e7396d9aeadfe3ddeecc4c8bb77df91c34740c01..3227a67e7c93f6008305dce2311bd92e348b7718 100644
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -382,13 +382,39 @@ int hostapd_set_wds_sta(struct hostapd_data *hapd, char *ifname_wds,
+@@ -385,15 +385,41 @@ int hostapd_set_wds_sta(struct hostapd_data *hapd, char *ifname_wds,
  			const u8 *addr, int aid, int val)
  {
  	const char *bridge = NULL;
@@ -113,9 +113,11 @@ index e7396d9aeadfe3ddeecc4c8bb77df91c34740c01..3227a67e7c93f6008305dce2311bd92e
 +
  	if (hapd->conf->wds_bridge[0])
  		bridge = hapd->conf->wds_bridge;
+ 	else if (hapd->conf->bridge[0])
+ 		bridge = hapd->conf->bridge;
  	return hapd->driver->set_wds_sta(hapd->drv_priv, addr, aid, val,
 -					 bridge, ifname_wds);
-+					bridge, ifName);
++					 bridge, ifName);
  }
  
  
