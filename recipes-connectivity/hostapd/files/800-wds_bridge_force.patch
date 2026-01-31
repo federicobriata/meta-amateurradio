@@ -11,7 +11,7 @@ instead rely entirely on netifd handling this properly
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -2241,6 +2241,8 @@ static int hostapd_config_fill(struct ho
+@@ -2445,6 +2445,8 @@ static int hostapd_config_fill(struct ho
  			   sizeof(conf->bss[0]->iface));
  	} else if (os_strcmp(buf, "bridge") == 0) {
  		os_strlcpy(bss->bridge, pos, sizeof(bss->bridge));
@@ -22,12 +22,12 @@ instead rely entirely on netifd handling this properly
  	} else if (os_strcmp(buf, "vlan_bridge") == 0) {
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -390,8 +390,6 @@ int hostapd_set_wds_sta(struct hostapd_d
- 		return -1;
+@@ -416,8 +416,6 @@ int hostapd_set_wds_sta(struct hostapd_d
+ 
  	if (hapd->conf->wds_bridge[0])
  		bridge = hapd->conf->wds_bridge;
 -	else if (hapd->conf->bridge[0])
 -		bridge = hapd->conf->bridge;
  	return hapd->driver->set_wds_sta(hapd->drv_priv, addr, aid, val,
- 					 bridge, ifname_wds);
+ 					 bridge, ifName);
  }
