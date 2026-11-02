@@ -32,7 +32,7 @@ CONFLICT_DISTRO_FEATURES = "openssl-no-weak-ciphers"
 INITSCRIPT_NAME = "hostapd"
 
 SYSTEMD_SERVICE:${PN} = "hostapd.service"
-SYSTEMD_AUTO_ENABLE:${PN} = "disable"
+SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 
 RDEPENDS:${PN} += "batctl iw iproute2 util-linux-rfkill kmod"
 
