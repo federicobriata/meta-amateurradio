@@ -17,17 +17,12 @@ Signed-off-by: Gioacchino Mazzurco <gio@polymathes.cc>
 
 Upstream-Status: Backport [https://github.com/tk154/openwrt/commit/4afebf2dc6288fe16a02e9c7d41b1c347145a3fc]
 
-Adapted for mac80211 5.15: the foreign-BSSID check uses ieee80211_bssid_match()
-and the destination is compared with ether_addr_equal(), as
-ieee80211_is_our_addr() only exists from 6.0. IEEE80211_MIN_ACTION_SIZE takes
-no argument and action_code is inside u.action.u.
+Adapted with adapt_393_patch.sh for mac80211 where IEEE80211_MIN_ACTION_SIZE
+takes no argument and action_code is inside u.action.u (6.6, 6.12).
 ---
 --- a/net/mac80211/rx.c
 +++ b/net/mac80211/rx.c
-@@ -4111,6 +4111,54 @@
- 
- /* main receive path */
- 
+@@ -4511,3 +4511,51 @@
 +/* APuP peers keep their own BSSID instead of associating to ours. */
 +static bool ieee80211_accept_4addr_peer_ba(struct ieee80211_rx_data *rx)
 +{
@@ -49,7 +44,7 @@ no argument and action_code is inside u.action.u.
 +	if (vlan->vif.type != NL80211_IFTYPE_AP_VLAN ||
 +	    !vlan->wdev.use_4addr ||
 +	    rcu_access_pointer(vlan->u.vlan.sta) != sta ||
-+	    !ether_addr_equal(mgmt->da, rx->sdata->vif.addr) ||
++	    !ieee80211_is_our_addr(rx->sdata, mgmt->da, &rx->link_id) ||
 +	    !ether_addr_equal(mgmt->sa, sta->sta.addr) ||
 +	    !ether_addr_equal(mgmt->bssid, sta->sta.addr))
 +		return false;
@@ -79,10 +74,9 @@ no argument and action_code is inside u.action.u.
  static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
  {
  	struct ieee80211_sub_if_data *sdata = rx->sdata;
-@@ -4186,6 +4234,12 @@
- 			return ether_addr_equal(sdata->vif.addr, hdr->addr1);
- 
- 		if (!ieee80211_bssid_match(bssid, sdata->vif.addr)) {
+@@ -4598,4 +4646,10 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
+ 		if (!is_broadcast_ether_addr(bssid) &&
+ 		    !ieee80211_is_our_addr(sdata, bssid, NULL)) {
 +			/*
 +			 * Return now: the later action-frame check would also reject a
 +			 * peer BSSID that differs from our address.
@@ -91,4 +85,3 @@ no argument and action_code is inside u.action.u.
 +				return true;
  			/*
  			 * Accept public action frames even when the
- 			 * BSSID doesn't match, this is used for P2P
