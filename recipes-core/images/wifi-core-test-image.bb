@@ -18,11 +18,13 @@ IMAGE_INSTALL += "\
 	batctl \
 	batman-adv \
 	ca-certificates \
+	dnsmasq \
 	ethtool \
 	hostapd \
 	htop \
 	iperf3 \
 	iproute2 \
+	iptables \
 	iw \
 	kernel-modules \
 	linux-firmware-ath9k \

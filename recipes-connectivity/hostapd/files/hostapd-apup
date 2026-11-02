@@ -11,6 +11,16 @@ umask 077
 . @SYSCONFDIR@/hostapd-apup/hostapd-apup.conf
 
 HOSTAPD_CONFIG=/tmp/hostapup_apup.conf
+NAT_CHAIN=APUP_MESH_NAT
+
+cleanup_nat() {
+    [ -n "${HOTSPOT_IP:-}" ] || return 0
+    if iptables -t nat -S "$NAT_CHAIN" >/dev/null 2>&1; then
+        iptables -t nat -D POSTROUTING -j "$NAT_CHAIN" 2>/dev/null || true
+        iptables -t nat -F "$NAT_CHAIN"
+        iptables -t nat -X "$NAT_CHAIN"
+    fi
+}
 
 load_addresses() {
     PHY_MAC=$(cat "/sys/class/net/$WIFI_IF/address")
@@ -42,6 +52,9 @@ prepare() {
     sleep 1
     iw dev "$WIFI_IF" set type __ap
     ip link set "$WIFI_IF" mtu 1500
+    if [ -n "${HOTSPOT_IP:-}" ]; then
+        ip addr replace "$HOTSPOT_CIDR" dev "$WIFI_IF"
+    fi
 
     if [ ! -d /sys/module/batman_adv ]; then
         modprobe batman-adv
@@ -59,6 +72,14 @@ prepare() {
     ip link set "$MESH_IF" up
     ip addr flush dev "$MESH_IF"
     ip addr replace "$NODE_IP/16" broadcast "$NET_PREFIX.255.255" dev "$MESH_IF"
+
+    if [ -n "${HOTSPOT_IP:-}" ]; then
+        echo 1 > /proc/sys/net/ipv4/ip_forward
+        cleanup_nat
+        iptables -t nat -N "$NAT_CHAIN"
+        iptables -t nat -A "$NAT_CHAIN" -s "$HOTSPOT_NETWORK" -o "$MESH_IF" -j MASQUERADE
+        iptables -t nat -A POSTROUTING -j "$NAT_CHAIN"
+    fi
     echo "Mesh prepared. Node IP: $NODE_IP - Bat MAC: $BAT_MAC"
 }
 
@@ -129,12 +150,23 @@ case "${1:-}" in
     start)
         load_addresses
         generate_config
+        if [ -n "${HOTSPOT_IP:-}" ]; then
+            dnsmasq --interface="$WIFI_IF" --except-interface=lo --bind-interfaces \
+                --pid-file=/run/hostapd-apup/dnsmasq.pid \
+                --dhcp-leasefile=/run/hostapd-apup/dnsmasq.leases \
+                --dhcp-range="$DHCP_RANGE" \
+                --dhcp-option="3,$HOTSPOT_IP" --dhcp-option="6,$HOTSPOT_IP" \
+                --conf-file=/dev/null
+        fi
         watch_peers &
         echo "Starting hostapd on channel $WIFI_CHANNEL"
         exec @SBINDIR@/hostapd "$HOSTAPD_CONFIG"
         ;;
+    stop)
+        cleanup_nat
+        ;;
     *)
-        echo "Usage: $0 {prepare|start}" >&2
+        echo "Usage: $0 {prepare|start|stop}" >&2
         exit 1
         ;;
 esac

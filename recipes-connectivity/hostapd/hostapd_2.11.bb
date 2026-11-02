@@ -34,7 +34,7 @@ INITSCRIPT_NAME = "hostapd"
 SYSTEMD_SERVICE:${PN} = "hostapd.service"
 SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 
-RDEPENDS:${PN} += "batctl iw iproute2 util-linux-rfkill kmod"
+RDEPENDS:${PN} += "batctl iw iproute2 iptables dnsmasq util-linux-rfkill kmod"
 
 do_configure:append() {
     install -m 0644 -D ${WORKDIR}/defconfig ${S}/hostapd/.config
