@@ -1,0 +1,140 @@
+#!/bin/sh
+#
+# Some Rights Reserved. 2026 Federico Pietro Briata
+#
+# Licensed under the GNU General Public License (GPL) version 2 or later
+# and the 3-Clause BSD License.
+
+set -eu
+umask 077
+
+. @SYSCONFDIR@/hostapd-apup/hostapd-apup.conf
+
+HOSTAPD_CONFIG=/tmp/hostapup_apup.conf
+
+load_addresses() {
+    PHY_MAC=$(cat "/sys/class/net/$WIFI_IF/address")
+    BAT_MAC="42:${PHY_MAC#*:}"
+    if [ -z "${NODE_IP:-}" ]; then
+        MAC5=$(printf '%s\n' "$PHY_MAC" | cut -d: -f5)
+        MAC6=$(printf '%s\n' "$PHY_MAC" | cut -d: -f6)
+        NODE_IP="$NET_PREFIX.$(printf '%d' "0x$MAC5").$(printf '%d' "0x$MAC6")"
+    fi
+}
+
+prepare() {
+    attempts=0
+    while [ ! -e "/sys/class/net/$WIFI_IF/address" ]; do
+        if [ "$attempts" -ge 360 ]; then
+            echo "Wi-Fi interface $WIFI_IF not found after 360 seconds" >&2
+            exit 1
+        fi
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+    load_addresses
+    rfkill unblock all
+    ip link set "$WIFI_IF" down
+    sleep 1
+    iw reg set "$COUNTRY_CODE"
+    sleep 1
+    iw dev "$WIFI_IF" set txpower $TX_POWER
+    sleep 1
+    iw dev "$WIFI_IF" set type __ap
+    ip link set "$WIFI_IF" mtu 1500
+
+    if [ ! -d /sys/module/batman_adv ]; then
+        modprobe batman-adv
+    fi
+    if ! ip link show dev "$MESH_IF" >/dev/null 2>&1; then
+        ip link add name "$MESH_IF" type batadv
+    fi
+    batctl meshif "$MESH_IF" bl 0
+    batctl meshif "$MESH_IF" multicast_mode 0
+    batctl meshif "$MESH_IF" it "$ORIG_INTERVAL"
+    rfkill unblock all
+    ip link set "$WIFI_IF" up
+    ip link set "$MESH_IF" address "$BAT_MAC"
+    ip link set "$MESH_IF" mtu 1460
+    ip link set "$MESH_IF" up
+    ip addr flush dev "$MESH_IF"
+    ip addr replace "$NODE_IP/16" broadcast "$NET_PREFIX.255.255" dev "$MESH_IF"
+    echo "Mesh prepared. Node IP: $NODE_IP - Bat MAC: $BAT_MAC"
+}
+
+generate_config() {
+    DRIVER=$(basename "$(readlink "/sys/class/net/$WIFI_IF/device/driver")")
+    HT40_DIRECTION="[HT40+]"
+    if [ "$WIFI_CHANNEL" -gt 7 ]; then
+        HT40_DIRECTION="[HT40-]"
+    fi
+    case "$DRIVER" in
+        ath9k*|rt2800usb)
+            HT_CAPAB="${HT40_DIRECTION}[SHORT-GI-20][SHORT-GI-40][RX-STBC1]"
+            ;;
+        *)
+            HT_CAPAB="[SHORT-GI-20][SHORT-GI-40]"
+            ;;
+    esac
+
+    cat <<EOF > "$HOSTAPD_CONFIG"
+interface=$WIFI_IF
+ctrl_interface=/var/run/hostapd
+driver=nl80211
+ssid=$SSID
+channel=$WIFI_CHANNEL
+hw_mode=g
+ieee80211n=1
+wmm_enabled=1
+country_code=$COUNTRY_CODE
+stationary_ap=0
+ht_capab=$HT_CAPAB
+preamble=1
+apup=1
+apup_peer_ifname_prefix=$APUPEER_PREFIX
+auth_algs=1
+EOF
+    if [ -n "${STAWPA:-}" ]; then
+    cat <<EOF >> "$HOSTAPD_CONFIG"
+wpa=2
+wpa_passphrase=$STAWPA
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=CCMP
+rsn_pairwise=CCMP
+EOF
+    fi
+}
+
+watch_peers() {
+    set +e
+    echo "Watcher started: waiting for ${APUPEER_PREFIX}X interfaces..."
+    while true; do
+        for sta_path in /sys/class/net/"$APUPEER_PREFIX"*; do
+            [ -e "$sta_path" ] || continue
+            sta_if=${sta_path##*/}
+            if batctl meshif "$MESH_IF" if | awk -v iface="$sta_if:" '$1 == iface {found=1} END {exit !found}'; then
+                continue
+            fi
+            echo "Adding $sta_if to $MESH_IF"
+            batctl meshif "$MESH_IF" if add "$sta_if"
+        done
+        sleep 2
+    done
+}
+
+case "${1:-}" in
+    prepare)
+        prepare
+        ;;
+    start)
+        load_addresses
+        generate_config
+        watch_peers &
+        echo "Starting hostapd on channel $WIFI_CHANNEL"
+        exec @SBINDIR@/hostapd "$HOSTAPD_CONFIG"
+        ;;
+    *)
+        echo "Usage: $0 {prepare|start}" >&2
+        exit 1
+        ;;
+esac

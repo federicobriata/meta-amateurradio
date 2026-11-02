@@ -12,6 +12,9 @@ SRC_URI = " \
     file://defconfig \
     file://init \
     file://hostapd.service \
+    file://hostapd-apup \
+    file://hostapd-apup.conf \
+    file://10-apup-mesh.network \
     file://CVE-2025-24912-01.patch \
     file://CVE-2025-24912-02.patch \
     file://88463683e73cee8fab8a36c7f4832dbb455ddb7c.diff \
@@ -31,6 +34,8 @@ INITSCRIPT_NAME = "hostapd"
 SYSTEMD_SERVICE:${PN} = "hostapd.service"
 SYSTEMD_AUTO_ENABLE:${PN} = "disable"
 
+RDEPENDS:${PN} += "batctl iw iproute2 util-linux-rfkill kmod"
+
 do_configure:append() {
     install -m 0644 -D ${WORKDIR}/defconfig ${S}/hostapd/.config
 }
@@ -47,8 +52,13 @@ do_install() {
     install -m 0755 ${B}/hostapd/hostapd ${D}${sbindir}
     install -m 0755 ${B}/hostapd/hostapd_cli ${D}${sbindir}
     install -m 755 ${WORKDIR}/init ${D}${sysconfdir}/init.d/hostapd
+    install -d ${D}${sysconfdir}/hostapd-apup
+    install -m 0600 ${WORKDIR}/hostapd-apup.conf ${D}${sysconfdir}/hostapd-apup/hostapd-apup.conf
+    install -m 0755 ${WORKDIR}/hostapd-apup ${D}${sbindir}/hostapd-apup
+    sed -i -e 's,@SBINDIR@,${sbindir},g' -e 's,@SYSCONFDIR@,${sysconfdir},g' ${D}${sbindir}/hostapd-apup
+    install -m 0644 -D ${WORKDIR}/10-apup-mesh.network ${D}${sysconfdir}/systemd/network/10-apup-mesh.network
     install -m 0644 ${WORKDIR}/hostapd.service ${D}${systemd_unitdir}/system/
     sed -i -e 's,@SBINDIR@,${sbindir},g' -e 's,@SYSCONFDIR@,${sysconfdir},g' ${D}${systemd_unitdir}/system/hostapd.service
 }
 
-CONFFILES:${PN} += "${sysconfdir}/hostapd.conf"
+CONFFILES:${PN} += "${sysconfdir}/hostapd.conf ${sysconfdir}/hostapd-apup/hostapd-apup.conf"
