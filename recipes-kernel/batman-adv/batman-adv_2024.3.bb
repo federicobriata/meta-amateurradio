@@ -16,7 +16,7 @@ EXTRA_OEMAKE = "KERNELPATH=${STAGING_KERNEL_BUILDDIR}"
 do_install() {
     oe_runmake install DESTDIR=${D} INSTALL_MOD_PATH=${D} DEPMOD=echo
 
-    if [ -d ${D}/lib ]; then
+    if [ "${nonarch_base_libdir}" != "/lib" ] && [ -d ${D}/lib ]; then
         install -d ${D}${nonarch_base_libdir}
         cp -r ${D}/lib/* ${D}${nonarch_base_libdir}/
         rm -rf ${D}/lib
