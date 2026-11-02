@@ -3,9 +3,12 @@ Description=Hostapd IEEE 802.11 AP, IEEE 802.1X/WPA/WPA2/EAP/RADIUS Authenticato
 After=network.target
 
 [Service]
-Type=forking
-PIDFile=/run/hostapd.pid
-ExecStart=@SBINDIR@/hostapd @SYSCONFDIR@/hostapd.conf -P /run/hostapd.pid -B
+Type=simple
+ExecStartPre=@SBINDIR@/hostapd-apup prepare
+ExecStart=@SBINDIR@/hostapd-apup start
+KillMode=control-group
+TimeoutStartSec=420
+TimeoutStopSec=15
 
 [Install]
 WantedBy=multi-user.target
