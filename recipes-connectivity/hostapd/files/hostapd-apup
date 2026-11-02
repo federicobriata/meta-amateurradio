@@ -12,6 +12,7 @@ umask 077
 
 HOSTAPD_CONFIG=/tmp/hostapup_apup.conf
 NAT_CHAIN=APUP_MESH_NAT
+PRIMARY_IF=primary0
 
 cleanup_nat() {
     [ -n "${HOTSPOT_IP:-}" ] || return 0
@@ -25,6 +26,7 @@ cleanup_nat() {
 load_addresses() {
     PHY_MAC=$(cat "/sys/class/net/$WIFI_IF/address")
     BAT_MAC="42:${PHY_MAC#*:}"
+    PRIMARY_MAC="46:${PHY_MAC#*:}"
     if [ -z "${NODE_IP:-}" ]; then
         MAC5=$(printf '%s\n' "$PHY_MAC" | cut -d: -f5)
         MAC6=$(printf '%s\n' "$PHY_MAC" | cut -d: -f6)
@@ -72,6 +74,16 @@ prepare() {
     ip link set "$MESH_IF" up
     ip addr flush dev "$MESH_IF"
     ip addr replace "$NODE_IP/16" broadcast "$NET_PREFIX.255.255" dev "$MESH_IF"
+
+    # Added first so it stays the primary: the originator address no longer depends on which peer shows up first
+    if ! ip link show dev "$PRIMARY_IF" >/dev/null 2>&1; then
+        ip link add name "$PRIMARY_IF" type dummy
+    fi
+    ip link set "$PRIMARY_IF" address "$PRIMARY_MAC"
+    ip link set "$PRIMARY_IF" up
+    if ! batctl meshif "$MESH_IF" if | awk -v iface="$PRIMARY_IF:" '$1 == iface {found=1} END {exit !found}'; then
+        batctl meshif "$MESH_IF" if add "$PRIMARY_IF"
+    fi
 
     if [ -n "${HOTSPOT_IP:-}" ]; then
         echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -133,11 +145,25 @@ watch_peers() {
         for sta_path in /sys/class/net/"$APUPEER_PREFIX"*; do
             [ -e "$sta_path" ] || continue
             sta_if=${sta_path##*/}
-            if batctl meshif "$MESH_IF" if | awk -v iface="$sta_if:" '$1 == iface {found=1} END {exit !found}'; then
+            PEER_NUM=${sta_if#"$APUPEER_PREFIX"}
+            case "$PEER_NUM" in
+                ''|*[!0-9]*) continue ;;
+            esac
+            MV_IF="mv${PEER_NUM}"
+            if batctl meshif "$MESH_IF" if | awk -v iface="$MV_IF:" '$1 == iface {found=1} END {exit !found}'; then
                 continue
             fi
-            echo "Adding $sta_if to $MESH_IF"
-            batctl meshif "$MESH_IF" if add "$sta_if"
+            # Peer MAC on this WDS link; empty until hostapd has moved the station here, so retry on the next pass
+            PEER_MAC=$(iw dev "$sta_if" station dump 2>/dev/null | awk '/^Station/ {print $2; exit}')
+            [ -n "$PEER_MAC" ] || continue
+            # 02 (locally administered) + our MAC bytes 4-6 + peer MAC bytes 5-6: unique per peer, stable across reboots
+            MV_MAC="02:$(printf '%s\n' "$PHY_MAC" | cut -d: -f4-6):$(printf '%s\n' "$PEER_MAC" | cut -d: -f5-6)"
+            if ! ip link show dev "$MV_IF" >/dev/null 2>&1; then
+                echo "Creating $MV_IF on $sta_if with MAC $MV_MAC"
+                ip link add link "$sta_if" name "$MV_IF" address "$MV_MAC" type macvlan mode bridge || continue
+            fi
+            ip link set dev "$MV_IF" up || continue
+            batctl meshif "$MESH_IF" if add "$MV_IF"
         done
         sleep 2
     done
