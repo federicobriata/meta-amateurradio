@@ -1,6 +1,9 @@
 # any kernel recipe with fragment support, that sets LINUX_VERSION to one of the
 # tested values, will get the appropriate fragments included in their SRC_URI
 
+# The mac80211 APuP patch lets Block Ack frames from APuP peers through, without
+# it there is no aggregation: each version include adds it, adapted to that kernel.
+
 LINUX_MAJOR = "${@(d.getVar('LINUX_VERSION') or "x.y").split('.')[0]}"
 LINUX_MINOR = "${@(d.getVar('LINUX_VERSION') or "x.y").split('.')[1]}"
 
