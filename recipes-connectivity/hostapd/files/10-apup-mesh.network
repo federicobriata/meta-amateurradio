@@ -1,6 +1,6 @@
-# bat0 belongs to hostapd-apup: networkd would otherwise configure it through 80-wired.network (Type=ether)
+# Mesh links belong to hostapd-apup: networkd would detach them from bat0 (80-wired.network matches Type=ether)
 [Match]
-Name=bat0
+Name=bat0 primary0 mv*
 
 [Link]
 Unmanaged=yes
