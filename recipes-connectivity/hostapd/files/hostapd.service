@@ -1,11 +1,15 @@
 [Unit]
 Description=Hostapd IEEE 802.11 AP, IEEE 802.1X/WPA/WPA2/EAP/RADIUS Authenticator
-After=network.target
+After=network.target dnsmasq.service
+Conflicts=dnsmasq.service
 
 [Service]
 Type=simple
+RuntimeDirectory=hostapd-apup
+RuntimeDirectoryMode=0750
 ExecStartPre=@SBINDIR@/hostapd-apup prepare
 ExecStart=@SBINDIR@/hostapd-apup start
+ExecStopPost=@SBINDIR@/hostapd-apup stop
 KillMode=control-group
 TimeoutStartSec=420
 TimeoutStopSec=15
