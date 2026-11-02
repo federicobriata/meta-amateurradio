@@ -1,0 +1,6 @@
+# bat0 belongs to hostapd-apup: networkd would otherwise configure it through 80-wired.network (Type=ether)
+[Match]
+Name=bat0
+
+[Link]
+Unmanaged=yes
