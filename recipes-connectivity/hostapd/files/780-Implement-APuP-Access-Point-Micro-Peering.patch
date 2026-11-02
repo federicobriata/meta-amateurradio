@@ -140,7 +140,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4f14429ed
 --- /dev/null
 +++ b/src/ap/apup.c
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,166 @@
 +/*
 + * hostapd / APuP Access Point Micro Peering
 + *
@@ -187,6 +187,12 @@ index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4
 +		return;
 +
 +	sta_ret = ap_sta_add(hapd, mgmt->bssid);
++	if (!sta_ret)
++	{
++		wpa_printf(MSG_INFO,
++		           "apup_process_beacon(...) Failed to add APuP peer");
++		return;
++	}
 +
 +	/* TODO: this has been added just to making compiler happy after breaking
 +	 * changes introduced in 11a607d121df512e010148bedcb4263a03329dc7 to support
@@ -223,7 +229,8 @@ index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4
 +
 +	/* Whithout this flag copy_sta_[v]ht_capab will disable [V]HT
 +	 * capabilities even if available */
-+	if (elems->ht_capabilities || elems->vht_capabilities)
++	if (elems->ht_capabilities || elems->vht_capabilities ||
++	    elems->he_capabilities || elems->eht_capabilities)
 +		sta_ret->flags |= WLAN_STA_WMM;
 +
 +	copy_sta_ht_capab(hapd, sta_ret, elems->ht_capabilities);
@@ -249,6 +256,7 @@ index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4
 +	if (hostapd_get_aid(hapd, sta_ret) < 0)
 +	{
 +		wpa_printf(MSG_INFO, "apup_process_beacon(...) No room for more AIDs");
++		ap_free_sta(hapd, sta_ret);
 +		return;
 +	}
 +
@@ -287,6 +295,12 @@ index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4
 +	// last param 1 means add 0 means remove
 +	int mRet = hostapd_set_wds_sta(
 +	            hapd, mIfname, mgmt->bssid, sta_ret->aid, 1);
++
++	if (mRet == 0) {
++		sta_ret->flags |= WLAN_STA_WDS;
++		os_free(sta_ret->ifname_wds);
++		sta_ret->ifname_wds = os_strdup(mIfname);
++	}
 +
 +	wpa_printf(MSG_INFO,
 +	           "apup_process_beacon(...) Added APuP peer at %s with flags: %d,"
