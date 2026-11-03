@@ -20,6 +20,7 @@ SRC_URI = " \
     file://300-noscan.patch \
     file://88463683e73cee8fab8a36c7f4832dbb455ddb7c.diff \
     file://780-Implement-APuP-Access-Point-Micro-Peering.patch \
+    file://781-APuP-Custom-Static-Keying.patch \
 "
 
 SRC_URI += "${@bb.utils.contains('BBFILE_COLLECTIONS', 'meta-openwrt', 'file://800-wds_bridge_force.patch', '', d)}"
