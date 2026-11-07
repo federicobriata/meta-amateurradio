@@ -140,8 +140,29 @@ EOF
 
 watch_peers() {
     set +e
+    warned_mac=
+    adapter_missing=0
     echo "Watcher started: waiting for ${APUPEER_PREFIX}X interfaces..."
     while true; do
+        current_mac=$(cat "/sys/class/net/$WIFI_IF/address" 2>/dev/null)
+        if [ -z "$current_mac" ]; then
+            adapter_missing=1
+            sleep 2
+            continue
+        fi
+        if [ "$current_mac" != "$PHY_MAC" ]; then
+            if [ "$current_mac" != "$warned_mac" ]; then
+                echo "Wi-Fi adapter $WIFI_IF removed or replaced: detected MAC $current_mac, expected MAC $PHY_MAC; changing adapters compromises the mesh network. Reconnect the Wi-Fi adapter used when this node was booted (MAC: $PHY_MAC)."
+                warned_mac=$current_mac
+            fi
+            sleep 2
+            continue
+        fi
+        if [ "$adapter_missing" -eq 1 ] || [ -n "$warned_mac" ]; then
+            echo "Wi-Fi adapter $WIFI_IF returned with expected MAC $PHY_MAC."
+            adapter_missing=0
+            warned_mac=
+        fi
         for sta_path in /sys/class/net/"$APUPEER_PREFIX"*; do
             [ -e "$sta_path" ] || continue
             sta_if=${sta_path##*/}
@@ -190,6 +211,9 @@ case "${1:-}" in
         ;;
     stop)
         cleanup_nat
+        for mv_path in /sys/class/net/mv[0-9]*; do
+            [ ! -e "$mv_path" ] || ip link del "${mv_path##*/}" 2>/dev/null || true
+        done
         ;;
     *)
         echo "Usage: $0 {prepare|start|stop}" >&2
