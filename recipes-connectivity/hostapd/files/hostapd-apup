@@ -109,6 +109,10 @@ generate_config() {
             HT_CAPAB="[SHORT-GI-20][SHORT-GI-40]"
             ;;
     esac
+    NOSCAN_OPT=
+    if [ "${NOSCAN:-1}" = 1 ] && grep -q noscan @SBINDIR@/hostapd; then
+        case "$HT_CAPAB" in *HT40[+-]*) NOSCAN_OPT=noscan=1 ;; esac
+    fi
 
     cat <<EOF > "$HOSTAPD_CONFIG"
 interface=$WIFI_IF
@@ -122,6 +126,7 @@ wmm_enabled=1
 country_code=$COUNTRY_CODE
 stationary_ap=0
 ht_capab=$HT_CAPAB
+$NOSCAN_OPT
 preamble=1
 apup=1
 apup_peer_ifname_prefix=$APUPEER_PREFIX

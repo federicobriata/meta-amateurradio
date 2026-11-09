@@ -17,6 +17,7 @@ SRC_URI = " \
     file://10-apup-mesh.network \
     file://CVE-2025-24912-01.patch \
     file://CVE-2025-24912-02.patch \
+    file://300-noscan.patch \
     file://88463683e73cee8fab8a36c7f4832dbb455ddb7c.diff \
     file://780-Implement-APuP-Access-Point-Micro-Peering.patch \
 "
