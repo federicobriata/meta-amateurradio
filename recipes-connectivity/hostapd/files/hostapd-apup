@@ -15,7 +15,6 @@ NAT_CHAIN=APUP_MESH_NAT
 PRIMARY_IF=primary0
 
 cleanup_nat() {
-    [ -n "${HOTSPOT_IP:-}" ] || return 0
     if iptables -t nat -S "$NAT_CHAIN" >/dev/null 2>&1; then
         iptables -t nat -D POSTROUTING -j "$NAT_CHAIN" 2>/dev/null || true
         iptables -t nat -F "$NAT_CHAIN"
@@ -88,9 +87,11 @@ prepare() {
     if [ -n "${HOTSPOT_IP:-}" ]; then
         echo 1 > /proc/sys/net/ipv4/ip_forward
         cleanup_nat
-        iptables -t nat -N "$NAT_CHAIN"
-        iptables -t nat -A "$NAT_CHAIN" -s "$HOTSPOT_NETWORK" -o "$MESH_IF" -j MASQUERADE
-        iptables -t nat -A POSTROUTING -j "$NAT_CHAIN"
+        if [ "${HOTSPOT_NAT:-}" = 1 ]; then
+            iptables -t nat -N "$NAT_CHAIN"
+            iptables -t nat -A "$NAT_CHAIN" -s "$HOTSPOT_NETWORK" -o "$MESH_IF" -j MASQUERADE
+            iptables -t nat -A POSTROUTING -j "$NAT_CHAIN"
+        fi
     fi
     echo "Mesh prepared. Node IP: $NODE_IP - Bat MAC: $BAT_MAC"
 }
