@@ -15,7 +15,18 @@ mesh_create() {
     if [ ! -d /sys/module/batman_adv ]; then
         modprobe batman-adv
     fi
-    if ! ip link show dev "$MESH_IF" >/dev/null 2>&1; then
+    # The algorithm of an existing mesh interface cannot change: recreate it after a protocol switch
+    create=1
+    if ip link show dev "$MESH_IF" >/dev/null 2>&1; then
+        active=$(batctl ra | awk -v iface="$MESH_IF:" '$1 == "*" && $2 == iface {print $3}')
+        if [ "$active" = BATMAN_IV ]; then
+            create=0
+        else
+            ip link del dev "$MESH_IF"
+        fi
+    fi
+    if [ "$create" = 1 ]; then
+        batctl ra BATMAN_IV
         ip link add name "$MESH_IF" type batadv
     fi
     batctl meshif "$MESH_IF" bl 0
