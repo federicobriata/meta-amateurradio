@@ -1,6 +1,7 @@
 # Mesh links belong to hostapd-apup: networkd would detach them from bat0 (80-wired.network matches Type=ether)
+# The peer interfaces *.w29-up* are links of the mesh themselves with batman V
 [Match]
-Name=bat0 primary0 mv*
+Name=bat0 primary0 mv* *.w29-up*
 
 [Link]
 Unmanaged=yes

@@ -16,6 +16,7 @@ SRC_URI = " \
     file://apup-watchdog \
     file://common.sh \
     file://mesh-batman-iv.sh \
+    file://mesh-batman-v.sh \
     file://hostapd-apup.conf \
     file://10-apup-mesh.network \
     file://CVE-2025-24912-01.patch \
@@ -61,7 +62,7 @@ do_install() {
     install -m 0755 ${WORKDIR}/hostapd-apup ${D}${sbindir}/hostapd-apup
     install -m 0755 ${WORKDIR}/apup-watchdog ${D}${sbindir}/apup-watchdog
     install -d ${D}${libexecdir}/hostapd-apup
-    install -m 0644 ${WORKDIR}/common.sh ${WORKDIR}/mesh-batman-iv.sh ${D}${libexecdir}/hostapd-apup/
+    install -m 0644 ${WORKDIR}/common.sh ${WORKDIR}/mesh-batman-iv.sh ${WORKDIR}/mesh-batman-v.sh ${D}${libexecdir}/hostapd-apup/
     sed -i -e 's,@SBINDIR@,${sbindir},g' -e 's,@SYSCONFDIR@,${sysconfdir},g' -e 's,@LIBEXECDIR@,${libexecdir},g' \
         ${D}${sbindir}/hostapd-apup ${D}${sbindir}/apup-watchdog ${D}${libexecdir}/hostapd-apup/*.sh
     install -m 0644 -D ${WORKDIR}/10-apup-mesh.network ${D}${sysconfdir}/systemd/network/10-apup-mesh.network
