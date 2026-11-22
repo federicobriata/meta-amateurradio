@@ -15,6 +15,7 @@ IMAGE_FEATURES:remove = "\
 	"
 
 IMAGE_INSTALL += "\
+	babeld \
 	batctl \
 	batman-adv \
 	ca-certificates \

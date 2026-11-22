@@ -17,6 +17,7 @@ SRC_URI = " \
     file://common.sh \
     file://mesh-batman-iv.sh \
     file://mesh-batman-v.sh \
+    file://mesh-babel.sh \
     file://hostapd-apup.conf \
     file://10-apup-mesh.network \
     file://CVE-2025-24912-01.patch \
@@ -39,7 +40,7 @@ INITSCRIPT_NAME = "hostapd"
 SYSTEMD_SERVICE:${PN} = "hostapd.service"
 SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 
-RDEPENDS:${PN} += "batctl iw iproute2 iptables dnsmasq util-linux-rfkill kmod"
+RDEPENDS:${PN} += "batctl babeld iw iproute2 iptables dnsmasq util-linux-rfkill kmod"
 
 do_configure:append() {
     install -m 0644 -D ${WORKDIR}/defconfig ${S}/hostapd/.config
@@ -62,7 +63,7 @@ do_install() {
     install -m 0755 ${WORKDIR}/hostapd-apup ${D}${sbindir}/hostapd-apup
     install -m 0755 ${WORKDIR}/apup-watchdog ${D}${sbindir}/apup-watchdog
     install -d ${D}${libexecdir}/hostapd-apup
-    install -m 0644 ${WORKDIR}/common.sh ${WORKDIR}/mesh-batman-iv.sh ${WORKDIR}/mesh-batman-v.sh ${D}${libexecdir}/hostapd-apup/
+    install -m 0644 ${WORKDIR}/common.sh ${WORKDIR}/mesh-batman-iv.sh ${WORKDIR}/mesh-batman-v.sh ${WORKDIR}/mesh-babel.sh ${D}${libexecdir}/hostapd-apup/
     sed -i -e 's,@SBINDIR@,${sbindir},g' -e 's,@SYSCONFDIR@,${sysconfdir},g' -e 's,@LIBEXECDIR@,${libexecdir},g' \
         ${D}${sbindir}/hostapd-apup ${D}${sbindir}/apup-watchdog ${D}${libexecdir}/hostapd-apup/*.sh
     install -m 0644 -D ${WORKDIR}/10-apup-mesh.network ${D}${sysconfdir}/systemd/network/10-apup-mesh.network
