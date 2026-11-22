@@ -140,7 +140,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4f14429ed
 --- /dev/null
 +++ b/src/ap/apup.c
-@@ -0,0 +1,166 @@
+@@ -0,0 +1,187 @@
 +/*
 + * hostapd / APuP Access Point Micro Peering
 + *
@@ -203,12 +203,18 @@ index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4
 +	bool mld_link_sta = false;
 +
 +	/* First add the station without more information */
-+	int aRet = hostapd_sta_add(
++	if (hostapd_sta_add(
 +	            hapd, mgmt->bssid, sta_ret->aid, 0,
 +	            NULL, 0, 0, NULL, NULL, NULL, 0, NULL, 0, NULL,
 +	            sta_ret->flags, 0, 0, 0,
 +	            0, // 0 add, 1 set
-+	            mld_link_addr, mld_link_sta);
++	            mld_link_addr, mld_link_sta))
++	{
++		wpa_printf(MSG_INFO,
++		           "apup_process_beacon(...) Failed to add APuP peer station");
++		ap_free_sta(hapd, sta_ret);
++		return;
++	}
 +
 +	sta_ret->flags |= WLAN_STA_AUTH;
 +	wpa_auth_sm_event(sta_ret->wpa_sm, WPA_AUTH);
@@ -269,7 +275,7 @@ index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4
 +	sta_ret->flags |= WLAN_STA_AUTH | WLAN_STA_ASSOC;
 +
 +	/* Then set the paramethers */
-+	int sRet = hostapd_sta_add(
++	if (hostapd_sta_add(
 +	            hapd, mgmt->bssid, sta_ret->aid,
 +	            sta_ret->capability,
 +	            sta_ret->supported_rates, sta_ret->supported_rates_len,
@@ -284,7 +290,13 @@ index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4
 +	            sta_ret->vht_opmode,
 +	            0, // int supp_p2p_ps
 +	            1, // 0 add, 1 set
-+	            mld_link_addr, mld_link_sta);
++	            mld_link_addr, mld_link_sta))
++	{
++		wpa_printf(MSG_INFO,
++		           "apup_process_beacon(...) Failed to set APuP peer station");
++		ap_free_sta(hapd, sta_ret);
++		return;
++	}
 +
 +	ap_sta_set_authorized(hapd, sta_ret, 1);
 +	hostapd_set_sta_flags(hapd, sta_ret);
@@ -293,14 +305,23 @@ index 0000000000000000000000000000000000000000..3575f1b6c6aaa1e073d2af83a9ad24a4
 +	os_memset(mIfname, 0, IFNAMSIZ + 1);
 +
 +	// last param 1 means add 0 means remove
-+	int mRet = hostapd_set_wds_sta(
-+	            hapd, mIfname, mgmt->bssid, sta_ret->aid, 1);
-+
-+	if (mRet == 0) {
-+		sta_ret->flags |= WLAN_STA_WDS;
-+		os_free(sta_ret->ifname_wds);
-+		sta_ret->ifname_wds = os_strdup(mIfname);
++	if (hostapd_set_wds_sta(
++	            hapd, mIfname, mgmt->bssid, sta_ret->aid, 1))
++	{
++		wpa_printf(MSG_INFO,
++		           "apup_process_beacon(...) Failed to add APuP peer interface %s",
++		           mIfname);
++		/* Only an interface that this call created has ifname_wds */
++		if (sta_ret->ifname_wds)
++			hostapd_set_wds_sta(hapd, NULL, sta_ret->addr,
++			                    sta_ret->aid, 0);
++		ap_free_sta(hapd, sta_ret);
++		return;
 +	}
++
++	sta_ret->flags |= WLAN_STA_WDS;
++	os_free(sta_ret->ifname_wds);
++	sta_ret->ifname_wds = os_strdup(mIfname);
 +
 +	wpa_printf(MSG_INFO,
 +	           "apup_process_beacon(...) Added APuP peer at %s with flags: %d,"
